@@ -4,10 +4,13 @@ import com.example.demo.model.entity.Listing;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ListingRepository extends JpaRepository<Listing, Long> {
 
-    List<Listing> findByPartNumber(String partNumber);
+    // Used for query-based caching
+    List<Listing> findBySearchQueryAndSource(String searchQuery, String source);
 
-    List<Listing> findBySource(String source);
+    // Used to prevent duplicate inserts
+    Optional<Listing> findByProductUrl(String productUrl);
 }

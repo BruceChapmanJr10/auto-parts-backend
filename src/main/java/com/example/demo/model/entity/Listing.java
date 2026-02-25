@@ -1,9 +1,6 @@
 package com.example.demo.model.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,23 +12,29 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class Listing {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Search term used to fetch this listing (enables query-based caching)
+    @Column(nullable = false)
+    private String searchQuery;
+
     private String title;
-    private String source; // EBAY / AMAZON
+
+    private String source; // EBAY, AMAZON (future)
 
     private Double price;
+
     private Double shippingCost;
+
     private Double totalPrice;
 
+    @Column(unique = true)
     private String productUrl;
-
-    private String partNumber;
 
     private String availability;
 
+    // Timestamp used for 6-hour cache expiration
     private Long lastUpdated;
 }
