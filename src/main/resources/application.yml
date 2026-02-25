@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/autoparts
     username: postgres
-    password: yourpassword
+    password: Snatchers1
 
   jpa:
     hibernate:
