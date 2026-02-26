@@ -1,8 +1,11 @@
 package com.example.demo.service.aggregation;
 
 
+import com.example.demo.model.dto.GarageSearchRequest;
 import com.example.demo.model.dto.ListingResponse;
 import com.example.demo.model.dto.VehicleSearchRequest;
+import com.example.demo.model.entity.GarageVehicle;
+import com.example.demo.repository.GarageVehicleRepository;
 import com.example.demo.service.affiliate.AffiliateLinkService;
 import com.example.demo.service.amazon.AmazonSearchService;
 import com.example.demo.service.ebay.EbaySearchService;
@@ -17,83 +20,102 @@ public class AggregationService {
     private final EbaySearchService ebaySearchService;
     private final AmazonSearchService amazonSearchService;
     private final AffiliateLinkService affiliateLinkService;
+    private final GarageVehicleRepository garageVehicleRepository;
 
     public AggregationService(
             EbaySearchService ebaySearchService,
             AmazonSearchService amazonSearchService,
-            AffiliateLinkService affiliateLinkService
+            AffiliateLinkService affiliateLinkService,
+            GarageVehicleRepository garageVehicleRepository
     ) {
         this.ebaySearchService = ebaySearchService;
         this.amazonSearchService = amazonSearchService;
         this.affiliateLinkService = affiliateLinkService;
+        this.garageVehicleRepository = garageVehicleRepository;
     }
 
     /**
-     * ============================================
-     * KEYWORD SEARCH (Original Search)
-     * ============================================
-     * Aggregates listings from all providers
-     * using a simple text query.
+     * Standard keyword aggregation
      */
     public List<ListingResponse> searchAllSources(String query) {
 
         List<ListingResponse> results = new ArrayList<>();
 
-        // Pull results from each provider
         results.addAll(ebaySearchService.search(query));
         results.addAll(amazonSearchService.search(query));
 
-        // Inject affiliate tracking links
         results.replaceAll(affiliateLinkService::inject);
 
-        // Sort by lowest total price
-        results.sort(Comparator.comparing(ListingResponse::getTotalPrice));
+        results.sort(
+                Comparator.comparing(ListingResponse::getTotalPrice)
+        );
 
         return results;
     }
 
     /**
-     * ============================================
-     * VEHICLE FITMENT SEARCH
-     * ============================================
-     * Builds a structured vehicle query and
-     * searches providers using fitment data.
+     * Vehicle fitment aggregation
      */
     public List<ListingResponse> searchVehicle(
             VehicleSearchRequest request
     ) {
-        List<ListingResponse> results = new ArrayList<>();
 
-        // Build formatted search string
-        // Example: "2018 Honda Accord brake pads"
-        String formattedQuery =
+        String query =
                 request.getYear() + " " +
                         request.getMake() + " " +
                         request.getModel() + " " +
                         request.getPart();
 
-        // Provider searches
+        List<ListingResponse> results = new ArrayList<>();
+
         results.addAll(
                 ebaySearchService.searchWithVehicle(
                         request,
-                        formattedQuery
+                        query
                 )
         );
 
         results.addAll(
-                amazonSearchService.search(formattedQuery)
+                amazonSearchService.search(query)
         );
 
-        // Inject affiliate links
         results.replaceAll(affiliateLinkService::inject);
 
-        // Sort by total price ascending
         results.sort(
-                Comparator.comparing(
-                        ListingResponse::getTotalPrice
-                )
+                Comparator.comparing(ListingResponse::getTotalPrice)
         );
 
         return results;
+    }
+
+    /**
+     * Garage-based search
+     */
+    public List<ListingResponse> searchByGarage(
+            GarageSearchRequest request
+    ) {
+
+        List<GarageVehicle> vehicles =
+                garageVehicleRepository
+                        .findByGarageId(request.getGarageId());
+
+        if (vehicles.isEmpty()) {
+            throw new RuntimeException(
+                    "Garage has no saved vehicles"
+            );
+        }
+
+        // For lightweight version we use first vehicle
+        GarageVehicle vehicle = vehicles.get(0);
+
+        VehicleSearchRequest vehicleRequest =
+                new VehicleSearchRequest();
+
+        vehicleRequest.setYear(vehicle.getYear());
+        vehicleRequest.setMake(vehicle.getMake());
+        vehicleRequest.setModel(vehicle.getModel());
+        vehicleRequest.setPart(request.getPart());
+
+        return searchVehicle(vehicleRequest);
     }
 }
