@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AggregationService {
@@ -35,7 +37,7 @@ public class AggregationService {
     }
 
     /**
-     * Standard keyword aggregation
+     * Keyword search
      */
     public List<ListingResponse> searchAllSources(String query) {
 
@@ -54,7 +56,7 @@ public class AggregationService {
     }
 
     /**
-     * Vehicle fitment aggregation
+     * Single vehicle search
      */
     public List<ListingResponse> searchVehicle(
             VehicleSearchRequest request
@@ -89,7 +91,7 @@ public class AggregationService {
     }
 
     /**
-     * Garage-based search
+     * Multi-vehicle garage search
      */
     public List<ListingResponse> searchByGarage(
             GarageSearchRequest request
@@ -105,17 +107,47 @@ public class AggregationService {
             );
         }
 
-        // For lightweight version we use first vehicle
-        GarageVehicle vehicle = vehicles.get(0);
+        List<ListingResponse> allResults =
+                new ArrayList<>();
 
-        VehicleSearchRequest vehicleRequest =
-                new VehicleSearchRequest();
+        // Run search for each vehicle
+        for (GarageVehicle vehicle : vehicles) {
 
-        vehicleRequest.setYear(vehicle.getYear());
-        vehicleRequest.setMake(vehicle.getMake());
-        vehicleRequest.setModel(vehicle.getModel());
-        vehicleRequest.setPart(request.getPart());
+            VehicleSearchRequest vehicleRequest =
+                    new VehicleSearchRequest();
 
-        return searchVehicle(vehicleRequest);
+            vehicleRequest.setYear(vehicle.getYear());
+            vehicleRequest.setMake(vehicle.getMake());
+            vehicleRequest.setModel(vehicle.getModel());
+            vehicleRequest.setPart(request.getPart());
+
+            allResults.addAll(
+                    searchVehicle(vehicleRequest)
+            );
+        }
+
+        // Remove duplicates by product URL
+        Map<String, ListingResponse> unique =
+                allResults.stream()
+                        .collect(Collectors.toMap(
+                                ListingResponse::getProductUrl,
+                                r -> r,
+                                (a, b) -> a
+                        ));
+
+        List<ListingResponse> deduped =
+                new ArrayList<>(unique.values());
+
+        // Inject affiliate links
+        deduped.replaceAll(affiliateLinkService::inject);
+
+        // Sort by lowest price
+        deduped.sort(
+                Comparator.comparing(
+                        ListingResponse::getTotalPrice
+                )
+        );
+
+        return deduped;
     }
 }
