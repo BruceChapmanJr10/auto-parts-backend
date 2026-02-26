@@ -31,16 +31,42 @@ public class FitmentValidationService {
         if (listing.getFitments() == null) return false;
 
         return listing.getFitments().stream()
-                .anyMatch(fitment ->
-                        request.getMake()
-                                .equalsIgnoreCase(fitment.getMake())
-                                &&
-                                request.getModel()
-                                        .equalsIgnoreCase(fitment.getModel())
-                                &&
-                                request.getYear() >= fitment.getYearStart()
-                                &&
-                                request.getYear() <= fitment.getYearEnd()
-                );
+                .anyMatch(fitment -> {
+
+                    // Year range check
+                    if (request.getYear() < fitment.getYearStart()
+                            || request.getYear() > fitment.getYearEnd()) {
+                        return false;
+                    }
+
+                    // Make & model
+                    if (!request.getMake()
+                            .equalsIgnoreCase(fitment.getMake())) {
+                        return false;
+                    }
+
+                    if (!request.getModel()
+                            .equalsIgnoreCase(fitment.getModel())) {
+                        return false;
+                    }
+
+                    // Optional trim match
+                    if (request.getTrim() != null
+                            && fitment.getTrim() != null
+                            && !request.getTrim()
+                            .equalsIgnoreCase(fitment.getTrim())) {
+                        return false;
+                    }
+
+                    // Optional engine match
+                    if (request.getEngine() != null
+                            && fitment.getEngine() != null
+                            && !request.getEngine()
+                            .equalsIgnoreCase(fitment.getEngine())) {
+                        return false;
+                    }
+
+                    return true;
+                });
     }
 }

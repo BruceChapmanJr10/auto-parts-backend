@@ -29,7 +29,7 @@ public class EbaySearchService {
     }
 
     /**
-     * Keyword search
+     * Keyword search (no fitment filtering)
      */
     public List<ListingResponse> search(String query) {
 
@@ -50,7 +50,7 @@ public class EbaySearchService {
                     .collect(Collectors.toList());
         }
 
-        // Mock keyword result
+        // Mock keyword listing
         List<ListingResponse> results = List.of(
                 ListingResponse.builder()
                         .title("Brake Pads - Honda Accord")
@@ -104,12 +104,11 @@ public class EbaySearchService {
         }
 
         // -----------------------------
-        // Mock multi-fitment listings
+        // Mock listings
         // -----------------------------
-
         List<ListingResponse> results = List.of(
 
-                // Compatible listing
+                // Compatible Accord listing
                 ListingResponse.builder()
                         .title("Honda Accord Brake Pads OEM")
                         .source("EBAY")
@@ -120,7 +119,7 @@ public class EbaySearchService {
                         .availability("In Stock")
                         .build(),
 
-                // Compatible listing
+                // Compatible Accord listing
                 ListingResponse.builder()
                         .title("Premium Ceramic Brake Pads Kit")
                         .source("EBAY")
@@ -131,7 +130,7 @@ public class EbaySearchService {
                         .availability("In Stock")
                         .build(),
 
-                // Incompatible listing
+                // Incompatible Ford listing
                 ListingResponse.builder()
                         .title("Ford F-150 Heavy Duty Brake Pads")
                         .source("EBAY")
@@ -152,7 +151,7 @@ public class EbaySearchService {
                         "EBAY"
                 );
 
-        // Apply fitment validation
+        // Apply validation
         List<Listing> validated =
                 fitmentValidationService.validateFitment(
                         fresh,
@@ -203,44 +202,55 @@ public class EbaySearchService {
                                 .build();
 
                         // -----------------------------
-                        // Multi-vehicle fitment mock
+                        // Assign fitments per listing
                         // -----------------------------
 
-                        ListingFitment accordFitment =
-                                ListingFitment.builder()
-                                        .listing(listing)
-                                        .make("Honda")
-                                        .model("Accord")
-                                        .yearStart(2013)
-                                        .yearEnd(2022)
-                                        .build();
+                        if (r.getTitle().contains("Accord")) {
 
-                        ListingFitment civicFitment =
-                                ListingFitment.builder()
-                                        .listing(listing)
-                                        .make("Honda")
-                                        .model("Civic")
-                                        .yearStart(2016)
-                                        .yearEnd(2021)
-                                        .build();
+                            ListingFitment accord15 =
+                                    ListingFitment.builder()
+                                            .listing(listing)
+                                            .make("Honda")
+                                            .model("Accord")
+                                            .yearStart(2016)
+                                            .yearEnd(2022)
+                                            .trim("Sport")
+                                            .engine("1.5L")
+                                            .build();
 
-                        // Incompatible fitment
-                        ListingFitment f150Fitment =
-                                ListingFitment.builder()
-                                        .listing(listing)
-                                        .make("Ford")
-                                        .model("F-150")
-                                        .yearStart(2015)
-                                        .yearEnd(2024)
-                                        .build();
+                            ListingFitment accord20 =
+                                    ListingFitment.builder()
+                                            .listing(listing)
+                                            .make("Honda")
+                                            .model("Accord")
+                                            .yearStart(2018)
+                                            .yearEnd(2022)
+                                            .trim("Touring")
+                                            .engine("2.0L")
+                                            .build();
 
-                        listing.setFitments(
-                                List.of(
-                                        accordFitment,
-                                        civicFitment,
-                                        f150Fitment
-                                )
-                        );
+                            listing.setFitments(
+                                    List.of(accord15, accord20)
+                            );
+                        }
+
+                        else if (r.getTitle().contains("F-150")) {
+
+                            ListingFitment fordFitment =
+                                    ListingFitment.builder()
+                                            .listing(listing)
+                                            .make("Ford")
+                                            .model("F-150")
+                                            .yearStart(2015)
+                                            .yearEnd(2022)
+                                            .trim("XLT")
+                                            .engine("3.5L")
+                                            .build();
+
+                            listing.setFitments(
+                                    List.of(fordFitment)
+                            );
+                        }
 
                         listingRepository.save(listing);
                     });

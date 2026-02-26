@@ -1,16 +1,14 @@
 package com.example.demo.model.dto;
 
+import lombok.Builder;
 import lombok.Data;
 
 @Data
-public class VehicleSearchRequest {
+@Builder
+public class VinDecodeResponse {
 
+    private String vin;
     private Integer year;
     private String make;
     private String model;
-    private String part;
-
-    // New fields
-    private String trim;
-    private String engine;
 }

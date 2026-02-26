@@ -16,7 +16,6 @@ public class ListingFitment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Many fitments belong to one listing
     @ManyToOne
     @JoinColumn(name = "listing_id")
     private Listing listing;
@@ -26,4 +25,7 @@ public class ListingFitment {
 
     private String make;
     private String model;
+
+    private String trim;
+    private String engine;
 }

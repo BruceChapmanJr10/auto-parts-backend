@@ -16,12 +16,15 @@ public class GarageVehicle {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Anonymous garage ID
     private String garageId;
 
     private Integer year;
     private String make;
     private String model;
+
+    // Added fields
+    private String trim;
+    private String engine;
 
     private Long createdAt;
 }
