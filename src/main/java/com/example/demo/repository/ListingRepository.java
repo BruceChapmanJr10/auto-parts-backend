@@ -13,4 +13,12 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     // Used to prevent duplicate inserts
     Optional<Listing> findByProductUrl(String productUrl);
+
+    List<Listing> findBySearchQueryAndSourceAndYearAndMakeAndModel(
+            String searchQuery,
+            String source,
+            Integer year,
+            String make,
+            String model
+    );
 }

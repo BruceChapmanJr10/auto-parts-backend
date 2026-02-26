@@ -37,4 +37,19 @@ public class Listing {
 
     // Timestamp used for 6-hour cache expiration
     private Long lastUpdated;
+
+    // Vehicle fitment fields
+    private Integer year;
+
+    private String make;
+
+    private String model;
+
+    // Fitment validation fields
+
+    @Column(name = "year_start")
+    private Integer yearStart;
+
+    @Column(name = "year_end")
+    private Integer yearEnd;
 }
