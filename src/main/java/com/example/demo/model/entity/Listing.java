@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -52,4 +54,11 @@ public class Listing {
 
     @Column(name = "year_end")
     private Integer yearEnd;
+
+    @OneToMany(
+            mappedBy = "listing",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<ListingFitment> fitments;
 }

@@ -2,6 +2,7 @@ package com.example.demo.service.fitment;
 
 import com.example.demo.model.dto.VehicleSearchRequest;
 import com.example.demo.model.entity.Listing;
+import com.example.demo.model.entity.ListingFitment;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,49 +11,36 @@ import java.util.stream.Collectors;
 @Service
 public class FitmentValidationService {
 
-    /**
-     * Filters listings by vehicle compatibility
-     */
     public List<Listing> validateFitment(
             List<Listing> listings,
-            VehicleSearchRequest vehicle
+            VehicleSearchRequest request
     ) {
 
         return listings.stream()
-                .filter(l -> isCompatible(l, vehicle))
+                .filter(listing ->
+                        isVehicleCompatible(listing, request)
+                )
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Compatibility logic
-     */
-    private boolean isCompatible(
+    private boolean isVehicleCompatible(
             Listing listing,
-            VehicleSearchRequest vehicle
+            VehicleSearchRequest request
     ) {
 
-        // Exact make/model match
-        if (listing.getMake() != null &&
-                !listing.getMake().equalsIgnoreCase(vehicle.getMake())) {
-            return false;
-        }
+        if (listing.getFitments() == null) return false;
 
-        if (listing.getModel() != null &&
-                !listing.getModel().equalsIgnoreCase(vehicle.getModel())) {
-            return false;
-        }
-
-        // Year range validation
-        if (listing.getYearStart() != null &&
-                vehicle.getYear() < listing.getYearStart()) {
-            return false;
-        }
-
-        if (listing.getYearEnd() != null &&
-                vehicle.getYear() > listing.getYearEnd()) {
-            return false;
-        }
-
-        return true;
+        return listing.getFitments().stream()
+                .anyMatch(fitment ->
+                        request.getMake()
+                                .equalsIgnoreCase(fitment.getMake())
+                                &&
+                                request.getModel()
+                                        .equalsIgnoreCase(fitment.getModel())
+                                &&
+                                request.getYear() >= fitment.getYearStart()
+                                &&
+                                request.getYear() <= fitment.getYearEnd()
+                );
     }
 }

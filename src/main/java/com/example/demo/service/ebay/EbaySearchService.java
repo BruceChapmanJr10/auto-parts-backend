@@ -3,6 +3,7 @@ package com.example.demo.service.ebay;
 import com.example.demo.model.dto.ListingResponse;
 import com.example.demo.model.dto.VehicleSearchRequest;
 import com.example.demo.model.entity.Listing;
+import com.example.demo.model.entity.ListingFitment;
 import com.example.demo.repository.ListingRepository;
 import com.example.demo.service.fitment.FitmentValidationService;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ public class EbaySearchService {
     private final ListingRepository listingRepository;
     private final FitmentValidationService fitmentValidationService;
 
+    // 6 hour cache window
     private static final long CACHE_EXPIRATION_MS = 21600000;
 
     public EbaySearchService(
@@ -48,6 +50,7 @@ public class EbaySearchService {
                     .collect(Collectors.toList());
         }
 
+        // Mock keyword result
         List<ListingResponse> results = List.of(
                 ListingResponse.builder()
                         .title("Brake Pads - Honda Accord")
@@ -60,7 +63,7 @@ public class EbaySearchService {
                         .build()
         );
 
-        saveOrUpdate(results, query, null);
+        saveOrUpdate(results, query);
 
         return results;
     }
@@ -76,14 +79,10 @@ public class EbaySearchService {
         long now = System.currentTimeMillis();
 
         List<Listing> cached =
-                listingRepository
-                        .findBySearchQueryAndSourceAndYearAndMakeAndModel(
-                                query,
-                                "EBAY",
-                                request.getYear(),
-                                request.getMake(),
-                                request.getModel()
-                        );
+                listingRepository.findBySearchQueryAndSource(
+                        query,
+                        "EBAY"
+                );
 
         boolean cacheValid = !cached.isEmpty() &&
                 cached.stream()
@@ -104,60 +103,56 @@ public class EbaySearchService {
                     .collect(Collectors.toList());
         }
 
-        // Compatible + incompatible mock listings
+        // -----------------------------
+        // Mock multi-fitment listings
+        // -----------------------------
+
         List<ListingResponse> results = List.of(
 
-                // Compatible
+                // Compatible listing
                 ListingResponse.builder()
-                        .title(
-                                request.getYear() + " " +
-                                        request.getMake() + " " +
-                                        request.getModel() +
-                                        " Brake Pads"
-                        )
+                        .title("Honda Accord Brake Pads OEM")
                         .source("EBAY")
                         .price(84.99)
                         .shippingCost(6.99)
                         .totalPrice(91.98)
-                        .productUrl("https://www.ebay.com/mock-fitment-item-1")
+                        .productUrl("https://www.ebay.com/mock-fitment-1")
                         .availability("In Stock")
                         .build(),
 
-                // Incompatible make
+                // Compatible listing
                 ListingResponse.builder()
-                        .title("Ford F-150 Brake Pads")
+                        .title("Premium Ceramic Brake Pads Kit")
                         .source("EBAY")
-                        .price(72.50)
-                        .shippingCost(5.00)
-                        .totalPrice(77.50)
-                        .productUrl("https://www.ebay.com/mock-fitment-item-2")
+                        .price(99.99)
+                        .shippingCost(0.00)
+                        .totalPrice(99.99)
+                        .productUrl("https://www.ebay.com/mock-fitment-2")
                         .availability("In Stock")
                         .build(),
 
-                // Incompatible model
+                // Incompatible listing
                 ListingResponse.builder()
-                        .title("Honda Civic Brake Pads")
+                        .title("Ford F-150 Heavy Duty Brake Pads")
                         .source("EBAY")
-                        .price(65.00)
-                        .shippingCost(4.99)
-                        .totalPrice(69.99)
-                        .productUrl("https://www.ebay.com/mock-fitment-item-3")
+                        .price(129.99)
+                        .shippingCost(10.99)
+                        .totalPrice(140.98)
+                        .productUrl("https://www.ebay.com/mock-fitment-3")
                         .availability("In Stock")
                         .build()
         );
 
-        saveOrUpdate(results, query, request);
+        saveOrUpdate(results, query);
 
+        // Reload saved listings
         List<Listing> fresh =
-                listingRepository
-                        .findBySearchQueryAndSourceAndYearAndMakeAndModel(
-                                query,
-                                "EBAY",
-                                request.getYear(),
-                                request.getMake(),
-                                request.getModel()
-                        );
+                listingRepository.findBySearchQueryAndSource(
+                        query,
+                        "EBAY"
+                );
 
+        // Apply fitment validation
         List<Listing> validated =
                 fitmentValidationService.validateFitment(
                         fresh,
@@ -170,12 +165,11 @@ public class EbaySearchService {
     }
 
     /**
-     * Save or update cache
+     * Save or update cached listings
      */
     private void saveOrUpdate(
             List<ListingResponse> results,
-            String query,
-            VehicleSearchRequest vehicle
+            String query
     ) {
 
         long now = System.currentTimeMillis();
@@ -192,15 +186,6 @@ public class EbaySearchService {
                         existing.setLastUpdated(now);
                         existing.setSearchQuery(query);
 
-                        if (vehicle != null) {
-                            existing.setYear(vehicle.getYear());
-                            existing.setMake(vehicle.getMake());
-                            existing.setModel(vehicle.getModel());
-
-                            existing.setYearStart(2016);
-                            existing.setYearEnd(2020);
-                        }
-
                         listingRepository.save(existing);
 
                     }, () -> {
@@ -215,12 +200,47 @@ public class EbaySearchService {
                                 .productUrl(r.getProductUrl())
                                 .availability(r.getAvailability())
                                 .lastUpdated(now)
-                                .year(vehicle != null ? vehicle.getYear() : null)
-                                .make(vehicle != null ? vehicle.getMake() : null)
-                                .model(vehicle != null ? vehicle.getModel() : null)
-                                .yearStart(2016)
-                                .yearEnd(2020)
                                 .build();
+
+                        // -----------------------------
+                        // Multi-vehicle fitment mock
+                        // -----------------------------
+
+                        ListingFitment accordFitment =
+                                ListingFitment.builder()
+                                        .listing(listing)
+                                        .make("Honda")
+                                        .model("Accord")
+                                        .yearStart(2013)
+                                        .yearEnd(2022)
+                                        .build();
+
+                        ListingFitment civicFitment =
+                                ListingFitment.builder()
+                                        .listing(listing)
+                                        .make("Honda")
+                                        .model("Civic")
+                                        .yearStart(2016)
+                                        .yearEnd(2021)
+                                        .build();
+
+                        // Incompatible fitment
+                        ListingFitment f150Fitment =
+                                ListingFitment.builder()
+                                        .listing(listing)
+                                        .make("Ford")
+                                        .model("F-150")
+                                        .yearStart(2015)
+                                        .yearEnd(2024)
+                                        .build();
+
+                        listing.setFitments(
+                                List.of(
+                                        accordFitment,
+                                        civicFitment,
+                                        f150Fitment
+                                )
+                        );
 
                         listingRepository.save(listing);
                     });
@@ -228,7 +248,7 @@ public class EbaySearchService {
     }
 
     /**
-     * Entity → DTO
+     * Entity → DTO mapping
      */
     private ListingResponse mapToResponse(Listing listing) {
 
